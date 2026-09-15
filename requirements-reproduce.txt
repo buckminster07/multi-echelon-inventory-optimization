@@ -1,0 +1,7 @@
+# Direct dependency versions from the validated Python 3.12 run.
+# This is not a complete transitive dependency lock.
+stockpyl==1.0.2
+numpy==2.3.5
+pandas==2.2.3
+scipy==1.17.0
+matplotlib==3.10.8
