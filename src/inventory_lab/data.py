@@ -166,11 +166,10 @@ def prepare(tables, output, config):
     splits = {"train": dates[:tr], "validation": dates[tr:va], "test": dates[va:]}
     series = {}
     for sku in tables["skus"].sku:
-        series[sku] = {
-            split: tables["demand"]
-            .query("sku==@sku")
-            .pivot(index="date", columns="node_id", values="quantity")
-            .loc[ds]
-            for split, ds in splits.items()
-        }
+        # Explicit filtering avoids query-local scope differences across Python versions.
+        demand = tables["demand"]
+        frame = demand.loc[demand["sku"] == sku].pivot(
+            index="date", columns="node_id", values="quantity"
+        )
+        series[sku] = {split: frame.loc[ds] for split, ds in splits.items()}
     return profile, leads, series, splits
