@@ -1,0 +1,4 @@
+sku,label,cost_multiplier,shortage_penalty
+SKU-001,Everyday,1.0,18
+SKU-002,Premium,2.0,32
+SKU-003,Occasional,0.7,12

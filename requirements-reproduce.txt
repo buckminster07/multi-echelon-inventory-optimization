@@ -1,6 +1,4 @@
-# Direct dependency versions from the validated Python 3.12 run.
-# This is not a complete transitive dependency lock.
-stockpyl==1.0.2
+# Direct scientific dependencies from the executed run; not a full transitive lock.
 numpy==2.3.5
 pandas==2.2.3
 scipy==1.17.0

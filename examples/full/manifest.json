@@ -1,0 +1,116 @@
+{
+  "data_source": "synthetic demonstration",
+  "config": {
+    "data_seed": 42,
+    "days": 900,
+    "train_days": 540,
+    "validation_days": 180,
+    "warmup": 45,
+    "search_days": 100,
+    "search_seeds": [
+      101,
+      102
+    ],
+    "evaluation_seeds": [
+      1001,
+      1002,
+      1003,
+      1004,
+      1005,
+      1006,
+      1007,
+      1008,
+      1009,
+      1010,
+      1011,
+      1012
+    ],
+    "target_fill_rate": 0.95,
+    "grid_multipliers": [
+      0.6,
+      1,
+      1.4,
+      1.8,
+      2.4,
+      3.2
+    ],
+    "scenarios": {
+      "normal": {
+        "spike_multiplier": 1,
+        "supplier_delay": 0
+      },
+      "demand_spike": {
+        "spike_multiplier": 1.6,
+        "supplier_delay": 0
+      },
+      "supplier_delay": {
+        "spike_multiplier": 1,
+        "supplier_delay": 4
+      },
+      "combined_stress": {
+        "spike_multiplier": 1.6,
+        "supplier_delay": 4
+      }
+    },
+    "search_scenarios": [
+      "normal",
+      "demand_spike",
+      "supplier_delay"
+    ]
+  },
+  "selection": {
+    "SKU-001": {
+      "normal_candidate": 0,
+      "service_candidate": 8,
+      "service_feasible_on_training": true,
+      "training_worst_fill": 0.9719864176570459,
+      "service_at_search_boundary": false
+    },
+    "SKU-002": {
+      "normal_candidate": 1,
+      "service_candidate": 8,
+      "service_feasible_on_training": true,
+      "training_worst_fill": 0.9668109668109668,
+      "service_at_search_boundary": false
+    },
+    "SKU-003": {
+      "normal_candidate": 1,
+      "service_candidate": 13,
+      "service_feasible_on_training": true,
+      "training_worst_fill": 0.9524838012958964,
+      "service_at_search_boundary": false
+    }
+  },
+  "split_dates": {
+    "train": {
+      "start": "2023-01-01",
+      "end": "2024-06-23",
+      "days": 540
+    },
+    "validation": {
+      "start": "2024-06-24",
+      "end": "2024-12-20",
+      "days": 180
+    },
+    "test": {
+      "start": "2024-12-21",
+      "end": "2025-06-18",
+      "days": 180
+    }
+  },
+  "python": "3.12.14",
+  "versions": {
+    "numpy": "2.3.5",
+    "pandas": "2.2.3",
+    "scipy": "1.17.0",
+    "matplotlib": "3.10.8"
+  },
+  "input_sha256": {
+    "nodes": "1107d6463a10c8144f170c93e6f489e5ec176764f2e5cee238ba31b05fd0f468",
+    "skus": "8ca6797e5add5ef994ff6ec42e79e558925f711bea94a6cff42bbea13e915fc7",
+    "demand": "b246deacabca1b73438aee1eb004de4217c5e48ded3eb2e60bcb3fb32429d2bb",
+    "receipts": "b635ed00dafc72a010a50dbd9100114e0669af272f9b58b29b55d419d3b5c7e4"
+  },
+  "full_material_balance_checks": true,
+  "simulator": "from-scratch periodic-review with sampled per-order transport times"
+}

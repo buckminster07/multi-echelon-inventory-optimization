@@ -1,174 +1,172 @@
-# Multi-Echelon Inventory Optimization under Uncertainty
+# Inventory Decision Intelligence
+### Multi-Echelon Inventory Optimization under Uncertainty
 
-**SQL analysis → inventory decisions → paired scenario validation**
+[![Tests](https://github.com/buckminster07/multi-echelon-inventory-optimization/actions/workflows/ci.yml/badge.svg)](https://github.com/buckminster07/multi-echelon-inventory-optimization/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-teal.svg)](LICENSE)
+[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/buckminster07/multi-echelon-inventory-optimization/blob/main/notebooks/01_inventory_decisions.ipynb)
 
-A reproducible inventory decision project that asks: **how much stock should a
-warehouse and its stores hold, and what happens when demand or supply changes?**
+**An end-to-end Python and SQL project answering a practical operations question:**
+How should warehouses and stores set inventory targets when demand changes and
+supplier lead times are uncertain?
 
-The application turns demand and replenishment records into inventory parameters,
-uses **Stockpyl** to jointly search stock targets, and benchmarks them against an
-independent planning heuristic. Results include cost, immediate fill rate,
-shortages and confidence intervals—not just an optimization score.
+**900 days · 3 SKUs · 2 warehouses · 4 stores · 3 policies · 4 scenarios**
 
-**Python · SQLite · Stockpyl · NumPy/Pandas · SciPy · Matplotlib · pytest**
+[Business questions](docs/PROBLEM_STATEMENTS.md) · [Measured results](examples/full/RESULTS.md) ·
+[Model details](docs/METHODOLOGY.md) · [Validation](docs/VALIDATION.md)
 
-> **Evidence scope:** runnable portfolio implementation with synthetic data.
-> The example below was produced by the code. It is not a deployment or a claim
-> of savings achieved at an employer.
+![Test-window cost and service comparison](examples/full/policy_comparison.png)
 
-![Measured inventory-policy comparison](examples/demo/policy_comparison.png)
+> **Data provenance:** the shipped experiment uses explicitly synthetic records.
+> Figures are computed by the pipeline, not inserted as target achievements.
+> These are simulation findings, not company savings or deployment results.
 
-## What the experiment found
+## Results worth examining
 
-In the default experiment, normal-demand optimization lowered mean daily cost
-from **60.35 to 44.44 cost units (26.4%)** on fresh simulation seeds. Immediate
-fill rate fell from **99.95% to 93.44%**. Under a persistent supplier delay, those
-same stock targets performed substantially worse than the independent baseline.
+On the untouched chronological test window:
 
-| Scenario | Independent cost/day | Coordinated cost/day | Independent fill | Coordinated fill |
-|---|---:|---:|---:|---:|
-| Normal | 60.35 | 44.44 | 99.95% | 93.44% |
-| Demand spike | 86.03 | 207.73 | 90.00% | 68.18% |
-| Supplier delay | 60.80 | 445.05 | 92.12% | 38.07% |
-| Combined stress | 344.26 | 807.60 | 72.07% | 31.06% |
+- **Normal-cost optimization:** reduced normal-scenario cost **22.0%**, but lowered
+  aggregate immediate fill from **99.64% to 94.14%**.
+- **Service-aware planning:** under combined demand and supplier stress, reduced
+  cost **31.6%** versus independent planning and improved aggregate fill from
+  **69.90% to 81.27%**. The paired 95% savings interval was **482.82–520.89 cost units/day**.
+- **Remaining exposure:** the service-aware policy met the **95% worst store–SKU
+  fill target in 2 of 4 test scenarios**. It also held more stock and cost more
+  under normal conditions. Better stress performance is not a universal win.
 
-**Decision implication:** a cost-only policy calibrated to normal demand should
-not be rolled out without a service target and disruption testing. The observed
-cost saving is a trade-off, not evidence that one policy dominates all scenarios.
+| Test scenario | Independent cost/day | Normal-optimized cost/day | Service-aware cost/day | Independent fill | Service-aware fill |
+|---|---:|---:|---:|---:|---:|
+| Normal | 430.46 | 335.70 | 612.09 | 99.64% | 99.93% |
+| Demand spike | 484.60 | 837.07 | 584.27 | 95.39% | 98.79% |
+| Supplier delay | 338.09 | 2,041.83 | 466.62 | 97.42% | 99.79% |
+| Combined stress | 1,590.15 | 4,411.40 | 1,088.29 | 69.90% | 81.27% |
 
-[Detailed results and paired 95% intervals](examples/demo/RESULTS.md) ·
-[Raw trial-level evidence](examples/demo/trials.csv) ·
-[Configuration, versions and input hashes](examples/demo/manifest.json)
+Costs are illustrative cost units. Aggregate fill can hide weak store–SKU pairs;
+see [the full results](examples/full/RESULTS.md) for worst-pair service and
+[raw trial evidence](examples/full/trials.csv). The experiment supports choosing
+policies according to a cost/service trade-off rather than a headline saving.
 
-## Run it
+## Business questions → implemented answers
 
-Python 3.10+ is supported by the package; the included full run was validated
-on Python 3.12. A CPU is sufficient. No paid API, account, database server or
-private dataset is required.
+| Problem | Implementation | Inspectable output |
+|---|---|---|
+| How variable is demand, and how long does replenishment take? | Validated CSV ingestion, relational SQLite tables, SQL joins and training-only statistics | Demand and lead-time profiles |
+| Where should safety inventory be placed? | Analytical independent baseline; joint warehouse/store target search | Stock targets and every candidate score |
+| How do we account for service commitments? | Select a low-cost candidate subject to a training service threshold across stores and scenarios | Feasibility flags and worst-pair fill |
+| What happens during demand spikes or supplier delays? | From-scratch simulator with per-order random transport times, FIFO dispatch and customer backorders | Trial metrics and daily inventory/backlog traces |
+| Do decisions generalize beyond fitted data? | Chronological train/validation/test windows, held-out seeds and an excluded combined-stress search scenario | Paired confidence intervals and validation/test tables |
 
-From the repository root:
+## Run the complete project
+
+Python 3.10+; CPU only. No paid API, external database server or private data is needed.
 
 ```bash
+git clone https://github.com/buckminster07/multi-echelon-inventory-optimization.git
+cd multi-echelon-inventory-optimization
 python -m venv .venv
 ```
 
-Activate the environment:
-
-```bash
-# macOS / Linux
-source .venv/bin/activate
-
-# Windows PowerShell
-.venv\Scripts\Activate.ps1
-```
-
-Install, test and execute:
+Activate with `source .venv/bin/activate` on macOS/Linux, or
+`.venv\Scripts\Activate.ps1` in Windows PowerShell. Then:
 
 ```bash
 python -m pip install -e ".[dev]"
 python -m pytest -q
-python -m inventory_lab.cli --config configs/demo.json --output outputs/demo
+python -m inventory_lab.cli --config configs/demo.json --output outputs/full
 ```
 
-Open `outputs/demo/RESULTS.md` and `outputs/demo/policy_comparison.png`.
-The default run searches 27 combinations and evaluates 160 policy/scenario/seed
-combinations; runtime varies by machine. To match the recorded direct dependency
-versions on Python 3.12, install `requirements-reproduce.txt` before the editable
-package. Transitive dependency versions are not fully locked.
+Open **`outputs/full/report.html`** in your browser to view the results report.
+It is a local report with linked CSV evidence, not a hosted production dashboard.
+The run also creates `RESULTS.md`, two figures, stock targets, SQL profiles,
+trial CSVs, a SQLite database and a provenance manifest. Runtime depends on hardware.
 
-**Google Colab:** upload and open
-[`notebooks/01_inventory_decisions.ipynb`](notebooks/01_inventory_decisions.ipynb),
-then upload the repository ZIP to `/content`. The first cell extracts it and
-sets the working directory. The notebook calls the same application code as the CLI.
-The Colab interface itself was not exercised during local validation.
+For the existing run, download the repository and open
+[`examples/full/report.html`](examples/full/report.html) locally. GitHub displays
+HTML source rather than rendering the report. The README figures render directly.
 
-## How it works
+## Pipeline architecture
 
 ```mermaid
 flowchart TD
-    A[Demand and receipt records] --> B[SQLite validation and profiling]
-    B --> C[Independent stock targets]
-    B --> D[Stockpyl joint target search]
-    C --> E[Paired scenario evaluation]
-    D --> E
-    E --> F[Cost and service evidence]
+    A[CSV data and configuration] --> B[Validation and SQLite profiling]
+    B --> C[Training-only parameter estimation]
+    C --> D[Independent and joint policy planning]
+    D --> E[Python inventory simulator]
+    E --> F[Chronological evaluation and paired statistics]
+    F --> G[Results report, charts and CSV evidence]
 ```
 
-1. **Data analysis.** Generate reproducible records or import compatible CSVs;
-   validate keys and dates; estimate demand moments and lead-time statistics.
-2. **Inventory decisions.** Construct a one-warehouse, two-store network. Compare
-   independently calculated base-stock levels with jointly searched targets.
-3. **Validation.** Freeze the selected policy and run four scenarios on 20 fresh
-   seeds. Use identical demand paths for both policies, a warm-up exclusion,
-   paired cost intervals and explicit service metrics.
+The network is configured by `nodes.csv`; each store references one warehouse.
+The demo supplies six locations. Additional warehouses, stores and SKUs can be
+provided through the same schema; SKU simulations have no shared capacity constraints.
 
-The default input contains **1,080 daily demand records**, covering **540 days**
-for **two stores and one SKU**. Replenishment records cover all three nodes.
-Cost assumptions and experimental settings are explicit in
-[`configs/demo.json`](configs/demo.json).
+## What was implemented from scratch?
 
-## Repository guide
+The Python code in this repository implements shipment events, inventory-position
+ordering, warehouse allocation, backorders, stochastic lead-time sampling,
+material-balance checks, finite-grid policy search and experiment orchestration.
+**Version 0.2 does not call Stockpyl.** NumPy/Pandas/SciPy/Matplotlib provide general
+numerical, data and reporting functions. The earlier Stockpyl prototype remains
+available in Git history, with attribution in [ACKNOWLEDGMENTS.md](ACKNOWLEDGMENTS.md).
 
-| Path | Purpose |
+## Reproducible evaluation
+
+- **Training:** first 540 days; demand moments and received shipment lead times only.
+- **Validation:** next 180 days, diagnostic reporting with frozen policies.
+- **Test:** final 180 days, with no parameter selection or retuning.
+- **Search:** 36 warehouse/store multiplier pairs per SKU; 108 candidates total.
+- **Training uncertainty:** two bootstrap paths per search scenario; normal demand,
+  demand spike and supplier delay. Combined stress is excluded from search.
+- **Evaluation:** 12 lead-time seeds × 4 scenarios × 3 policies × 3 SKUs × 2 windows
+  = **864 SKU simulation runs**, plus **648 candidate evaluation runs**.
+- **Accounting:** physical inventory, demand and open store orders reconcile every day.
+- **Provenance:** input SHA-256 hashes, full configuration, selected policies and
+  dependency versions are saved in [`manifest.json`](examples/full/manifest.json).
+
+The service threshold is enforced on estimated training performance, not guaranteed
+on future demand. Confidence intervals capture lead-time randomness conditional
+on the demand history. They do not cover all model uncertainty.
+
+## Code map
+
+| File | Responsibility |
 |---|---|
-| `src/inventory_lab/data.py` | Synthetic records, validation and SQLite integration |
-| `src/inventory_lab/sql/` | Schema, demand statistics and lead-time queries |
-| `src/inventory_lab/model.py` | Independent baseline and Stockpyl simulator adapter |
-| `src/inventory_lab/experiment.py` | Joint search, held-out seeds and paired intervals |
-| `src/inventory_lab/report.py` | Result tables and figure generation |
-| `src/inventory_lab/cli.py` | One-command execution and provenance manifest |
-| `configs/demo.json` | Costs, seeds, horizons, search grid and stress definitions |
-| `examples/demo/` | Committed synthetic inputs and actual example outputs |
-| `notebooks/` | Notebook/Colab entry point |
-| `tests/` | Accounting, data-quality, statistics and integration checks |
-| `.github/workflows/ci.yml` | Automated tests after publishing to GitHub |
-| `docs/` | Methodology, data contract, validation and publishing guide |
+| `src/inventory_lab/data.py` | Data generation, contract validation, SQLite preparation and date splits |
+| `src/inventory_lab/sql/` | Relational schema, joined demand profiles and observed lead times |
+| `src/inventory_lab/simulator.py` | From-scratch daily inventory engine and accounting checks |
+| `src/inventory_lab/planning.py` | Baseline targets, scenario construction, candidate search and feasibility |
+| `src/inventory_lab/evaluation.py` | Chronological evaluation, demand-weighted fill and paired intervals |
+| `src/inventory_lab/report.py` | Figures, Markdown results and portable HTML report |
+| `src/inventory_lab/cli.py` | Complete reproducible pipeline |
+| `configs/demo.json` | Costs through input tables, horizons, seeds, service target and search settings |
+| `notebooks/01_inventory_decisions.ipynb` | Colab/local walkthrough invoking the tested Python modules |
+| `tests/` | Deterministic examples, data leakage guards and end-to-end tests |
+| `examples/full/` | Executed experiment inputs and outputs |
 
-## Reproducibility and limitations
-
-- **Real algorithm integration:** Stockpyl performs multi-echelon simulation and
-  grid enumeration; the project supplies the data and experiment layers.
-- **Separate selection and evaluation:** optimization seeds 101–103;
-  evaluation seeds 1001–1020. Evaluation outcomes never select stock targets.
-- **Inspectable search:** all 27 candidate scores are retained. Two selected
-  targets are at lower grid boundaries; optimality is limited to this grid.
-- **Honest uncertainty:** demand uses empirical bootstrap sampling. Lead times
-  are fixed within a scenario, with a separate persistent-delay stress test.
-- **Narrow scope:** one SKU, independent stores, unlimited external supply,
-  backorders, no capacity or service constraints. Costs are illustrative.
-- **Auditable results:** CSV outputs, input SHA-256 hashes, configuration and
-  dependency versions accompany the figure. Results include policy failures.
-
-The 95% intervals describe variability across simulation seeds, conditional on
-this model. They do not establish future business performance. See
-[modeling details](docs/METHODOLOGY.md) and [validation evidence](docs/VALIDATION.md).
-
-## Use your own data
-
-Follow the [data contract](docs/DATA.md), then run:
+## Use compatible business data
 
 ```bash
 python -m inventory_lab.cli --data-dir /path/to/csvs --output outputs/custom
 ```
 
-This implementation supports exactly stores 1/2, warehouse 0 and SKU-001.
-Extending the topology or SKU set requires a model change, not merely a new CSV.
-The loader expects requested demand; stockout-censored sales need correction.
+Supply `nodes.csv`, `skus.csv`, `demand.csv` and `receipts.csv` following the
+[data contract](docs/DATA.md). Use actual requested demand rather than stockout-censored
+sales. Lead-time records describe dispatch-to-receipt transport time; they must
+not silently include inventory waiting time.
 
-## Next research steps
+## Scope and next decisions
 
-- Add service-constrained or disruption-aware optimization, then evaluate on a
-  separately reserved set of seeds.
-- Estimate and model correlated demand, seasonality and per-order lead-time uncertainty.
-- Introduce capacity, order minimums and transportation costs when supported by data.
+Implemented: multi-SKU two-echelon planning, random per-order transport times,
+backorders, stress testing and reproducible reports. Not implemented: shared SKU
+capacity, purchase order costs, expiration, forecasting ML, approval workflows,
+ERP integration or a production planning interface.
 
-These are future extensions, not implemented features.
+The selected policy is best among tested grouped multipliers, not a globally
+optimal inventory configuration. Stores within a SKU share a target multiplier,
+although their actual targets differ. These choices keep the search transparent.
+See the [methodology](docs/METHODOLOGY.md) and [decision brief](docs/DECISION_BRIEF.md).
 
-## References and attribution
+## License and contribution
 
-Built on [Stockpyl](https://github.com/LarrySnyder/stockpyl), with methodology
-informed by its [MEIO tutorial](https://stockpyl.readthedocs.io/en/latest/tutorial/tutorial_meio.html)
-and [simulation documentation](https://stockpyl.readthedocs.io/en/latest/tutorial/tutorial_sim.html).
-See [acknowledgments](ACKNOWLEDGMENTS.md) for implementation provenance.
-
-**License:** [MIT](LICENSE). **Publishing:** [GitHub setup guide](docs/GITHUB_SETUP.md).
+[MIT](LICENSE). [Contribution guide](CONTRIBUTING.md).
+Implementation was developed with AI assistance; ownership, testing and modeling
+assumptions are documented in [ACKNOWLEDGMENTS.md](ACKNOWLEDGMENTS.md).

@@ -1,0 +1,7 @@
+node_id,name,kind,parent_id,holding_cost
+0,North warehouse,warehouse,,0.3
+1,South warehouse,warehouse,,0.35
+2,North central,store,0.0,1.0
+3,North east,store,0.0,1.1
+4,South central,store,1.0,1.0
+5,South west,store,1.0,1.15

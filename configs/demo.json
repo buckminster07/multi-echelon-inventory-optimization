@@ -1,10 +1,13 @@
 {
   "data_seed": 42,
-  "training_days": 540,
-  "optimization_seeds": [
+  "days": 900,
+  "train_days": 540,
+  "validation_days": 180,
+  "warmup": 45,
+  "search_days": 100,
+  "search_seeds": [
     101,
-    102,
-    103
+    102
   ],
   "evaluation_seeds": [
     1001,
@@ -18,50 +21,38 @@
     1009,
     1010,
     1011,
-    1012,
-    1013,
-    1014,
-    1015,
-    1016,
-    1017,
-    1018,
-    1019,
-    1020
+    1012
   ],
-  "warmup": 60,
-  "optimization_periods": 180,
-  "evaluation_periods": 365,
+  "target_fill_rate": 0.95,
   "grid_multipliers": [
     0.6,
-    1.0,
-    1.4
-  ],
-  "holding_cost": [
-    0.3,
-    1.0,
-    1.0
-  ],
-  "stockout_penalty": [
-    0.0,
-    12.0,
-    12.0
+    1,
+    1.4,
+    1.8,
+    2.4,
+    3.2
   ],
   "scenarios": {
     "normal": {
-      "demand_multiplier": 1.0,
+      "spike_multiplier": 1,
       "supplier_delay": 0
     },
     "demand_spike": {
-      "demand_multiplier": 1.6,
+      "spike_multiplier": 1.6,
       "supplier_delay": 0
     },
     "supplier_delay": {
-      "demand_multiplier": 1.0,
-      "supplier_delay": 3
+      "spike_multiplier": 1,
+      "supplier_delay": 4
     },
     "combined_stress": {
-      "demand_multiplier": 1.6,
-      "supplier_delay": 3
+      "spike_multiplier": 1.6,
+      "supplier_delay": 4
     }
-  }
+  },
+  "search_scenarios": [
+    "normal",
+    "demand_spike",
+    "supplier_delay"
+  ]
 }

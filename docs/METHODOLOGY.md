@@ -1,97 +1,121 @@
-# Modeling and validation decisions
+# Modeling specification
 
-## Decision and scope
+## Network and decision
 
-Choose local base-stock targets S₀, S₁ and S₂ for a single-SKU network: warehouse
-0 supplies stores 1 and 2. Orders restore inventory position toward each target.
-Stockpyl 1.0.2 executes the inventory flows and replenishment logic.
+Each SKU is simulated independently through external suppliers → warehouses →
+stores → customers. A store has exactly one warehouse parent. Suppliers have
+unlimited inventory. There are no shared SKU capacity constraints.
+The decision is a local integer base-stock target S at each node.
 
-The objective is mean daily holding cost plus daily penalties on outstanding
-store backorders. Costs are arbitrary units, not rupees. There is no purchasing
-cost, fixed order charge, capacity limit, expiry, MOQ or transportation charge.
-External supply is unlimited. Initial inventory equals the policy target and
-60 warm-up days are excluded from both costs and service calculations.
+## State and daily event order
 
-## Baseline: independent local targets
+1. Receive due shipments. Decrease the corresponding open-order quantity.
+2. At stores, serve old customer backorders before new demand.
+3. Place store orders to restore inventory position toward S.
+4. Warehouses dispatch FIFO requests, allowing partial fulfillment. Same-day
+   store ordering priority rotates daily; older requests remain first.
+5. Warehouses place supplier orders to restore their own inventory position.
+6. Charge end-of-day holding and store-backorder costs and reconcile balances.
 
-Each node's target is calculated with a normal-approximation rule:
+Store inventory position = on-hand + outstanding replenishment − customer backlog.
+Warehouse inventory position = on-hand + open supplier orders − pending store requests.
+Stock already shipped to a store belongs to transit, not warehouse on-hand.
 
-`S_i = ceil(mu_i * (L_i + 1) + z_i * sqrt(var_i * (L_i + 1)))`
+Transport lead times are positive integers sampled from training receipt records.
+Internal shipments are sampled on dispatch, so warehouse waiting time is modeled
+separately. For comparable policies, each node draws one lead-time value per day
+from a deterministic seed stream whether or not it orders. Same-node same-day
+shipment fragments share that value. SKUs reuse node seed streams; intervals
+therefore reflect that common randomness rather than independent SKU shocks.
+Order crossing is allowed: a later shipment can arrive before an earlier one.
 
-`z_i = NormalInverseCDF(p_i / (p_i + h_i))`
+## Physical invariants
 
-`L+1` is a conservative daily-review protection-period approximation. It is a
-transparent heuristic rather than a theorem matching every Stockpyl timing
-convention. Warehouse demand mean and variance are sums across independent
-stores. Its planning shortage penalty is the average downstream penalty;
-realized warehouse backlog has no additional penalty, avoiding double counting.
-This baseline ignores how upstream availability affects downstream service.
+Every day, with assertions enabled:
 
-## Coordinated targets
+- Initial inventory + supplier receipts = on-hand + internal transit + cumulative customer shipments.
+- Cumulative customer requests = customer shipments + outstanding customer backlog.
+- Store open orders = undispatched requests + internal transit.
+- Physical on-hand stock is nonnegative.
 
-Stockpyl's `meio_by_enumeration` evaluates the Cartesian product of three target
-multipliers (0.6, 1.0, 1.4) per node: 27 candidate combinations. The baseline is
-included. A custom objective evaluates each combination on three identical
-training demand paths, with 180 measured days after warm-up per path.
+These checks are useful accounting validation, not proof of every behavioral assumption.
 
-This is the best observed policy on a finite grid under normal conditions.
-It is **not** a globally optimal solution or a robust optimization formulation.
-`manifest.json` flags grid-boundary choices; widen the grid in a separate
-experiment if a wider search is required. Do not tune using the evaluation seeds.
+## Independent baseline
 
-## Uncertainty and scenarios
+For node i, use a normal approximation with demand mean μ, variance v and transport
+lead-time moments E[L], Var[L]:
 
-Daily demands are drawn with replacement from historical store-specific samples.
-All policies receive identical paths for each scenario/seed (common random
-numbers). Optimization uses seeds 101–103; evaluation uses 1001–1020.
+`S_i = ceil( μ_i (E[L_i] + 1) + z_i sqrt(v_i (E[L_i] + 1) + μ_i² Var[L_i]) )`
 
-| Scenario | Demand | Warehouse inbound transport time |
+`z_i = Φ⁻¹(p_i / (p_i + h_i))`
+
+For warehouses, aggregate downstream demand means and variances (independent
+store approximation). The store shortage penalty is a planning proxy upstream;
+realized backorder cost is charged only at stores. This is a transparent heuristic,
+not an exact optimum for the simulation's event order.
+
+## Joint policy search
+
+Multipliers `[0.6, 1, 1.4, 1.8, 2.4, 3.2]` scale the baseline. All warehouse targets
+for a SKU share one multiplier and all store targets share another. Their absolute
+targets still differ. Enumerate 36 combinations per SKU.
+
+- **Normal optimized:** minimum normal-scenario average cost.
+- **Service aware:** minimum equally weighted cost across three training scenarios,
+  subject to every store/scenario pooled fill being at least 95%.
+- **Infeasible fallback:** maximum worst fill, then minimum mean cost, with a flag.
+
+Search uses two seeded bootstrap paths of 100 measured days, after 45 warm-up days.
+Whole store-demand vectors are sampled together within each SKU. This preserves
+same-day cross-store dependence but not serial dependence or weekly order.
+Two replications and the finite grid limit the precision of training estimates.
+
+## Temporal isolation
+
+540 training days estimate parameters and select all targets. The next 180 days
+are diagnostic validation; the final 180 days are test. Neither selects policies.
+Receipt records enter estimation only if received before the training cutoff.
+Warm-up uses the immediately preceding 45 demand days for each evaluation window.
+Validation and test are separately initialized simulations, not a continuous
+inventory rollout. Initial on-hand equals each policy target; external stock is
+not charged as a purchase cost.
+
+Evaluation holds the observed demand path fixed and varies transport randomness
+across 12 seeds. The normal test is an out-of-time synthetic backtest. Stress
+scenarios transform that demand or supplier transport time.
+
+## Scenarios
+
+| Scenario | Demand | Supplier transport |
 |---|---|---|
-| Normal | Empirical bootstrap | Ceiling of historical mean |
-| Demand spike | 1.6× during first quarter of measured horizon | Base |
-| Supplier delay | Base | Base + 3 days throughout, including warm-up |
-| Combined stress | Spike | Base + 3 days throughout |
+| Normal | Observed daily path | Empirical training samples |
+| Demand spike | 1.6× for one-quarter of the measured horizon, starting one-third in | Base |
+| Supplier delay | Base | Sampled lead + 4 days, including warm-up |
+| Combined stress | Spike | Delayed |
 
-The spike represents a temporary demand surge. Supplier delay represents a
-persistent slower supplier regime, not a randomly timed outage. Historical
-lead-time distributions are summarized, but the engine uses fixed transport
-times within a scenario; it does not sample a lead time for every order.
+The combined scenario is excluded from training search. Supplier delay is a
+persistent slower regime; transport times still vary within it.
 
-## Metrics
+## Metrics and inference
 
-- **Cost/day:** (holding costs + backorder penalties) / measured days.
-- **Immediate fill rate:** current demand served immediately from stock / current
-  demand; excludes later clearance of previously backlogged demand.
-- **Shortage units:** current demand not served immediately, summed across stores.
-- **Backlog unit-days:** daily outstanding store backlog, summed over days.
-  This is a different measure from shortage units.
-- **Cost saving:** 100 × (mean baseline cost − mean coordinated cost) / mean baseline cost.
-- **95% interval:** paired Student-t interval on per-seed cost differences, with
-  19 degrees of freedom in the default run. The interval is for absolute savings
-  per day, not for the reported percentage.
+Cost/day sums end-of-day holding and outstanding-store-backorder penalties,
+divided by measured days. Backorder penalties are per unit per day.
+Immediate fill is new demand served immediately / new demand; clearing an old
+backorder does not count as immediate service. Shortage units sum newly unfilled
+demand. Backlog unit-days repeatedly count outstanding backlog over time.
 
-Store shortage penalties are charged per unit per day outstanding. A weighted
-cost objective can favor lower service; always inspect fill rates alongside cost.
-No minimum service constraint is enforced.
+Network costs sum across SKUs. Aggregate fill is demand-weighted. Worst store–SKU
+fill pools seeds for each store/SKU and then takes the minimum; it is not the
+worst single realization. The service threshold is a training constraint only.
 
-## Validation boundaries
+For each policy, pair per-seed costs with the independent baseline. Report a
+Student-t 95% interval on the mean absolute cost saving (11 degrees of freedom).
+Percent savings use the ratio of mean cost differences to mean baseline cost.
+Intervals exclude demand-sample uncertainty, parameter uncertainty and model error.
 
-Unit tests check SQL moments, input rejection, deterministic inventory behavior,
-shortage accounting, scenario windows, seed separation and paired statistics.
-An integration test runs data generation through optimization and reporting.
-Stockpyl consistency checks are configured to raise exceptions.
+## Deliberate exclusions
 
-The bootstrap evaluates robustness within the fitted synthetic demand model.
-Its confidence intervals exclude distribution-estimation uncertainty and
-structural model error. Deployment would require real-data backtesting,
-calibrated costs, service constraints and operational review.
-
-## References
-
-- [Stockpyl source and MIT license](https://github.com/LarrySnyder/stockpyl)
-- [Multi-echelon optimization tutorial](https://stockpyl.readthedocs.io/en/latest/tutorial/tutorial_meio.html)
-- [Simulation timing and outputs](https://stockpyl.readthedocs.io/en/latest/tutorial/tutorial_sim.html)
-
-Stockpyl supplies the optimization and simulation algorithms. This repository
-adds SQL preparation, a defined baseline, experiment orchestration, paired
-validation, reporting and reproducible configuration.
+No lost sales, lead-time censoring model, capacity, MOQs, purchase/transport charges,
+product expiry, correlated supplier failures, forecasting ML or live ERP integration.
+Demand records must represent requests, not censored sales. Service-aware costs
+can be higher. Held-out service failures are retained in all reports.

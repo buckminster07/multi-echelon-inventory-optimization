@@ -1,54 +1,48 @@
 # Data contract and provenance
 
-The shipped demo generates **synthetic records**, not confidential company data.
-No real customer, vendor or employee identifiers are included. A fixed seed creates
-540 daily observations for each of two stores and a replenishment history for
-one warehouse and two stores. There is one SKU (`SKU-001`).
+All committed demo inputs are synthetic and generated from seed 42. They contain
+900 days × 4 stores × 3 SKUs = 10,800 daily demand records. The generator includes
+negative-binomial variability and a weekend demand effect. It makes no claim to
+represent a specific company. Receipt records are synthetic transport observations.
 
-## Required CSVs
+## CSV schemas
 
-`demand.csv`
-
-| Field | Type | Meaning |
+| File | Required columns | Meaning |
 |---|---|---|
-| date | YYYY-MM-DD | Demand date, daily granularity |
-| store_id | integer | 1 or 2 |
-| sku | string | SKU-001 |
-| quantity | integer ≥ 0 | Requested units, including unmet demand |
+| nodes.csv | node_id, name, kind, parent_id, holding_cost | kind is warehouse/store; warehouses have blank parent, stores reference a warehouse |
+| skus.csv | sku, label, cost_multiplier, shortage_penalty | Holding rates are multiplied by SKU cost multiplier; shortage penalty is per unit/day |
+| demand.csv | date, node_id, sku, quantity | YYYY-MM-DD, daily requested units at stores; include zero-demand days |
+| receipts.csv | receipt_id, node_id, sku, dispatch_date, receipt_date, quantity | Destination node and SKU; dispatch-to-receipt days must be positive |
 
-`replenishment.csv`
+Daily observations must cover the same dates for every store/SKU. Quantities are
+nonnegative integers; receipt quantities are positive. IDs must match master
+tables. Date keys must use ISO YYYY-MM-DD strings. Every node/SKU needs receipt
+observations available within the training period. Cost units are arbitrary and
+must be consistent; the example does not label them INR or USD.
 
-| Field | Type | Meaning |
-|---|---|---|
-| order_id | unique integer | Purchase/replenishment order |
-| node_id | integer | Receiving node: warehouse 0, stores 1/2 |
-| order_date | YYYY-MM-DD | Order placement |
-| receipt_date | YYYY-MM-DD | Complete receipt |
-| quantity | positive integer | Received units |
+Receipt quantities are validated but not used to calibrate order-size policies.
+Partial historical receipts must be preprocessed into a consistent transport-time
+sample. The simulation allows partial warehouse dispatches.
 
-Every store must have every date in the same training window, including zeros.
-At least 30 days are required. Orders and receipts must lie inside that window.
-Partial receipts are not supported. Historical receipts estimate lead-time
-statistics; their quantities do not calibrate the simulated ordering policy.
+For custom data, adjust train_days and validation_days so at least ten test days
+remain. Use ≥30 training days and ≥10 validation days. The demo uses 540/180/180.
+The importer supports additional stores, warehouses and SKUs within the two-echelon
+schema; capacity coupling between SKUs is not implemented or scalability-tested.
 
-For compatible data, run:
+## Output artifacts
 
-```bash
-inventory-lab --config configs/demo.json --data-dir /path/to/csvs --output outputs/custom
-```
+| Artifact | Purpose |
+|---|---|
+| inventory.sqlite | Derived relational database; generated locally, not committed |
+| demand_profile.csv / lead_time_profile.csv | Training-only statistics |
+| search_results.csv | Every candidate and its cost/service/feasibility scores |
+| targets.csv | Selected stock levels by node, SKU and policy |
+| trials.csv / store_trials.csv | All SKU and store-level evaluation metrics |
+| aggregate_trials.csv | Network-level seed results used for paired inference |
+| daily_trace.csv | First-seed daily trace for all configurations |
+| summary.csv / RESULTS.md | Readable and machine-readable comparison |
+| report.html / PNGs | Portable visual report |
+| manifest.json | Configuration, date boundaries, versions, hashes and selection flags |
 
-Do not equate sales with demand if stockouts censor observed sales. Recover unmet
-requests or document the resulting underestimation. For real data, also exclude
-receipts not yet observable at the training cutoff to avoid future information.
-
-## SQL analysis
-
-- `schema.sql` defines keys and constraints.
-- `demand_profile.sql` computes demand means and sample variances.
-- `lead_times.sql` derives elapsed calendar days from order/receipt dates.
-- Python aggregates lead-time quantiles and uses empirical demand samples.
-
-The demand generator uses independent negative-binomial draws by store. It does
-not simulate seasonality or cross-store correlation. The evaluation bootstrap
-inherits these assumptions. Fresh seeds are independent simulated replications,
-not a claim of chronological validation on real future sales.
+The committed daily trace is gzip-compressed. Read with
+`pd.read_csv('examples/full/daily_trace.csv.gz')`; full runs produce uncompressed CSV.
