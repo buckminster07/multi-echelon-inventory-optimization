@@ -13,5 +13,12 @@ of inventing these methods is made.
 
 The implementation and documentation were developed with AI assistance. The
 portfolio owner should review and reproduce the results before presenting them.
-There is no implied professor or employer endorsement. Data is explicitly synthetic.
+There is no implied employer endorsement. The earlier version 0.2 experiment uses synthetic data.
 General numerical/data libraries retain their own licenses. Repository code is MIT.
+
+The real-data retail workflow uses **Online Retail II**, contributed by Daqing Chen,
+UCI Machine Learning Repository, https://doi.org/10.24432/C5CG6D, under CC BY 4.0.
+The original dataset is downloaded on demand and retains its separate data license.
+Cleaning, cohort selection, demand models, constrained replenishment, planner audit
+and evaluation are implemented in `retail_planner/`. Actual transactions and assumed
+operating inputs are distinguished in `docs/RETAIL_DATA_CARD.md`.

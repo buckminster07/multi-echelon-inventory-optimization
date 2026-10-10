@@ -9,3 +9,8 @@ dist/
 outputs/
 .DS_Store
 .env
+
+data/cache/
+outputs/
+artifacts/
+

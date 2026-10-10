@@ -1,0 +1,19 @@
+{
+  "source": "https://archive.ics.uci.edu/static/public/502/online+retail+ii.zip",
+  "doi": "https://doi.org/10.24432/C5CG6D",
+  "license": "CC BY 4.0",
+  "raw_rows": 1067371,
+  "sha256": "572e36277c2390fbfde10664750731e0a86f55e33470d91919085f0408e67bfb",
+  "cancellation_rows": 22951,
+  "returned_units": 1064078.0,
+  "nonproduct_rows": 6093,
+  "nonpositive_rows": 25700,
+  "exact_repeated_lines_retained": 34335,
+  "extreme_bulk_rows_excluded": 7,
+  "clean_rows": 1036870,
+  "first_date": "2009-12-01",
+  "last_date": "2011-12-09",
+  "privacy": "Customer identifiers are never loaded or exported.",
+  "returns_treatment": "Excluded from outbound sales demand; no assumed resale recovery.",
+  "outlier_rule": "Exclude a line exceeding 10,000 units; retain all other observed quantities."
+}
