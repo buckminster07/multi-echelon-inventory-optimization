@@ -6,7 +6,9 @@
 
 **Coverage:** two workbook sheets, 1,067,371 transaction rows from 1 December 2009 through 9 December 2011. A UK-based online giftware retailer with many wholesale customers. Customer country identifies a market; it is not a warehouse identifier.
 
-**Loaded columns:** Invoice, StockCode, Description, Quantity, InvoiceDate, Price, Country. Customer ID is deliberately omitted. The modeled cohort ends at 30 November 2011 to avoid the final partial December period.
+**Modeling columns:** Invoice, StockCode, Description, Quantity, InvoiceDate, Price, Country. Customer ID is omitted from modeling. The separate full-column missingness audit transiently reads the original workbook including Customer ID, computes aggregate completeness counts, and discards identifiers without exporting them. The modeled cohort ends at 30 November 2011 to avoid the final partial December period.
+
+**Extended EDA:** [charts, tables and interpretation](../examples/retail/eda/README.md) cover missing values, weekday/monthly patterns, transaction-price changes, market returns and cutoff sensitivity. All behavioral analyses use dates through April 2011, across eligible source products and markets; missingness alone covers the complete original workbook. These additions do not change the prior benchmark or its fixed cleaning rule.
 
 **Observed:** positive sale quantities, product codes, dates, selling prices and destination countries. **Derived:** daily panels, training-only product/market selection, ABC/XYZ/ADI, forecasts and errors. **Assumed:** network, inventory, supplier lead times, pack/MOQ, capacity, budgets, acquisition costs, operating charges and demand-spike mechanisms. **Unknown:** actual latent demand, stockout history, availability, actual supplier purchase prices and true historical fulfillment service.
 

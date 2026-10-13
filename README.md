@@ -21,13 +21,13 @@ python run_retail.py --profile quick --output outputs/my-first-run
 python run_retail.py --profile full --output outputs/my-full-run
 ```
 
-Use a fresh output directory for each run to protect existing decisions. The initial download is approximately 46 MB. Cached full execution took about 133 seconds on the development machine; Colab timing varies.
+Use a fresh output directory for each run to protect existing decisions. The initial download is approximately 46 MB. The original cached inventory benchmark took about 133 seconds on the development machine; extended EDA adds a scan of both workbook sheets. Colab timing varies.
 
 ## Dataset and business assumptions
 
 [UCI Online Retail II](https://archive.ics.uci.edu/dataset/502/online+retail+ii), contributed by Daqing Chen, contains 1,067,371 transaction rows from a UK online retailer across 2009–2011. Actual quantities, prices, cancellations and country variation make it useful for studying intermittent demand and bulk purchases. Dataset license: CC BY 4.0; [DOI](https://doi.org/10.24432/C5CG6D).
 
-The training-only cohort selects United Kingdom, EIRE, Netherlands, Germany, France and Australia. Customer identifiers are never loaded. The data card documents cleaning and the source checksum.
+The training-only cohort selects United Kingdom, EIRE, Netherlands, Germany, France and Australia. Modeling excludes customer identifiers. The extended EDA reads their completeness transiently and exports only aggregate missingness counts. The data card documents cleaning and the source checksum.
 
 The source does not contain warehouse inventory or supplier lead times. A central warehouse plus six market hubs is a proposed network. Lead times, costs, capacity and budgets are explicit assumptions. Historical sales are a demand proxy; demand-uplift sensitivity examines possible unobserved demand.
 
@@ -52,6 +52,18 @@ These are simulated outcomes against real sales, not verified company savings. R
 
 ## Design and controls
 
+### Extended EDA with charts
+
+The CLI and Colab notebook include [executed EDA findings and five figures](examples/retail/eda/README.md):
+
+- Full original-column missing-value counts by workbook sheet and overall, with a completeness chart.
+- A training-period daily trend, detrended weekday profile, Friedman weekday-effect test with effect size, and complete-month sales chart. Annual seasonality is not established by this short training history.
+- Within-product-market monthly median selling-price changes, with a change histogram and indexed price trajectories.
+- Market-level returned-to-gross unit ratios, with volume-aware charts and explicit unmatched-return limitations.
+- Sensitivity to 1,000, 5,000, 10,000 and unlimited units per invoice line, comparing sales retention and daily spikes.
+
+The notebook displays the charts and tables directly; its download includes the complete `eda/` folder. Behavioral EDA uses training dates only across the eligible source catalog, rather than only the selected benchmark cohort. The published inventory benchmark and 10,000-unit cleaning rule are unchanged.
+
 - SQL tables integrate products, markets, daily sales, assortment, experiments, assumptions, proposals and decisions. SQL joins feed the modeling panel.
 - Four forecasts compete: seasonal naive, moving average, TSB and global Poisson gradient boosting. Recursive features use past information only.
 - Time windows are separate: training through April 2011, May selection, June–July calibration, August tuning, September validation, October–November test.
@@ -73,7 +85,7 @@ Start with the business brief, execute the notebook, then use the [learning path
 | `retail_planner/pipeline.py` | Orchestration and exports |
 | `retail_planner/report.py` | Charts and HTML report |
 
-The local suite passes **18 tests**. Notebook Python cells were executed sequentially with the quick real-data profile; the full pipeline ran separately. These local checks do not establish hosted Colab browser rendering.
+The local suite passes **22 tests**, including return denominators, cutoff sensitivity, consecutive-month price comparisons and weekday diagnostics. Notebook Python cells were executed sequentially with the quick real-data profile; the full inventory benchmark ran separately. These local checks do not establish hosted Colab browser rendering.
 
 ```bash
 python -m pip install -e '.[dev]'

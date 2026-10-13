@@ -11,7 +11,7 @@ md('''# Inventory Decision Intelligence — real-data retail planning
 
 This is the complete project workflow: data acquisition → cleaning → SQL → segmentation → forecasting → uncertainty → network simulation → optimization → test results → planner → export.
 
-**Data:** [UCI Online Retail II](https://doi.org/10.24432/C5CG6D), contributed by Daqing Chen, CC BY 4.0. About 1.07 million original transaction rows. Real sales and selling prices; proposed network and operating assumptions. Customer IDs are never loaded.
+**Data:** [UCI Online Retail II](https://doi.org/10.24432/C5CG6D), contributed by Daqing Chen, CC BY 4.0. About 1.07 million original transaction rows. Real sales and selling prices; proposed network and operating assumptions. Modeling excludes Customer IDs; extended EDA inspects only their aggregate completeness and exports no identifiers.
 
 Start with `PROFILE='quick'`; use `'full'` for 150 products and six training-selected markets. Both are complete pipelines. The real retailer's actual inventory and stockouts are unknown. Reported inventory outcomes are model results, not verified company savings.''')
 md('''## 1. Reproducible setup
@@ -81,6 +81,22 @@ axes[1].hist(data['pairs'].query('active').zero_fraction,bins=15);axes[1].set(ti
 fig.tight_layout();plt.show()
 display(data['sku_master'].head(12));display(data['pairs'].query('active').sort_values('adi',ascending=False).head(10))
 del transactions''')
+md('''## 4B. Extended EDA: evidence before modeling
+
+The missing-value audit covers every original column and sheet. Customer IDs are inspected only for aggregate completeness and discarded. Behavioral diagnostics use the initial training window across eligible products and markets. They do not change the original cleaning rule or select models using later test outcomes.
+
+Charts cover weekly/monthly patterns, within-product-market prices, market returns and extreme-order thresholds. The Friedman weekday test and effect size are exploratory; serial dependence and closure schedules limit interpretation. Monthly patterns do not establish annual seasonality with fewer than two complete training years.
+
+**Learn:** a negative-quantity-to-gross-sales ratio is not a matched order-return probability; a transaction median price change is not causal price elasticity. Cutoff sensitivity here measures data changes, not inventory-policy performance.''')
+code('''from retail_planner.eda import run_eda
+eda_tables,seasonality_evidence=run_eda(archive,'data/cache',out/'eda',c.train_end)
+display(eda_tables['missing_values'])
+display(pd.Series(seasonality_evidence))
+display(eda_tables['market_returns'].head(12))
+display(eda_tables['cutoff_sensitivity'])
+for chart in ['missing_values','seasonality','price_changes','market_returns','cutoff_sensitivity']:
+    display(Image(filename=str(out/'eda'/(chart+'.png'))))
+print('Read the accompanying interpretation:',out/'eda/README.md')''')
 md('''## 5. Train and select forecasts
 
 Compare seasonal naive, a 28-day mean, TSB for intermittent demand, and a global Poisson gradient booster. The booster learns across product–market pairs using categorical IDs, calendar fields and lagged demand statistics. Its recursive forecast uses predictions as future lags. May backtests select a method separately for each pair.
@@ -171,11 +187,16 @@ db.commit()
 pd.read_sql_query('SELECT * FROM decision',db).to_csv(out/'planner_decisions.csv',index=False)
 manifest=finalize(data,c,best,frames,audit,training_rows,out,started)
 display(Image(filename=str(out/'policy_comparison.png')))
-display(HTML((out/'report.html').read_text(encoding='utf-8').replace('src="policy_comparison.png"',f'src="{out}/policy_comparison.png"').replace('src="forecast_comparison.png"',f'src="{out}/forecast_comparison.png"')))
+import base64
+report_html=(out/'report.html').read_text(encoding='utf-8')
+for chart_path in out.rglob('*.png'):
+    encoded=base64.b64encode(chart_path.read_bytes()).decode('ascii')
+    report_html=report_html.replace('src="'+chart_path.relative_to(out).as_posix()+'"','src="data:image/png;base64,'+encoded+'"')
+display(HTML(report_html))
 archive_path=out.with_suffix('.zip')
 with zipfile.ZipFile(archive_path,'w',zipfile.ZIP_DEFLATED) as z:
-    for p in out.iterdir():
-        if p.is_file():z.write(p,p.name)
+    for p in out.rglob('*'):
+        if p.is_file():z.write(p,p.relative_to(out))
 print('Export:',archive_path)
 try:
     from google.colab import files

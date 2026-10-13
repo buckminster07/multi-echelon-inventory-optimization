@@ -25,6 +25,8 @@ The GitHub Actions workflow runs the tests on Python 3.10 and 3.11. Its badge de
 
 ## Experiment evidence
 
+The extended EDA adds four tests for raw-sales cutoff denominators and training boundaries, unlinked returned-unit ratios, consecutive sufficiently populated price months, and a known synthetic weekday pattern with an incomplete final month. All 22 tests pass locally. Five EDA figures were generated from the original workbook and visually checked. Missingness covers both original sheets; behavioral diagnostics end at the initial training cutoff. The original inventory-policy benchmark is unchanged.
+
 The full real-data experiment downloads/cleans the original workbook, integrates the training-selected cohort through SQLite, trains and selects forecasts, calibrates uncertainty, tunes policies, and evaluates held-out months. Manifests include source/data hashes, versions and seeds. Curated results are under `examples/retail/`; full CSVs, SQLite and shipment traces regenerate through the CLI/Colab notebook.
 
 The first exploratory run exposed a budget-cadence confound: weekly policies could only spend one daily allocation per review. The final implementation uses a common rolling seven-day budget and reruns tuning and all evaluations. Earlier exploratory outputs are not the published benchmark.

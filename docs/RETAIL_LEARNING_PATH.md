@@ -25,6 +25,8 @@ The forecast describes expected requests; the buffer protects uncertainty; inven
 
 ## Forecasting exercise
 
+Before forecasting, open [the extended EDA report](../examples/retail/eda/README.md). Explain all five figures: why missing customer IDs need not prevent SKU planning; why weekday effects may reflect opening schedules; why transaction-price changes can reflect buyer mix; why unlinked returned-unit ratios are not order-return probabilities; and how quantity cutoffs alter recorded peaks. Compare statistical evidence with operational significance. The cutoff experiment measures data sensitivity, not a rerun of inventory policies.
+
 Take one selected product-market pair. Display its daily series and zero fraction. Calculate the seven-day seasonal-naive forecast by hand. Compare it with the 28-day mean and TSB. Then inspect the global booster's held-out error. A more complex model earns use only if it improves the selected metric or inventory outcome. Explain the tradeoff if it improves MAE but underpredicts a few large wholesale orders.
 
 TSB example: occurrence probability p=.2 and positive size z=10 imply expected daily quantity pz=2. After a zero day with smoothing α=.1, p becomes .18 while z stays ten, producing 1.8. After a positive day of twenty units, p=.28 and z=11 from the original state, producing 3.08. It separates occurrence from size rather than averaging zeros and positives indiscriminately.

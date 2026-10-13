@@ -1,0 +1,8 @@
+{
+  "test": "Friedman weekday effect; complete weeks; 28-day detrended sales",
+  "complete_weeks": 69,
+  "statistic": 209.06516492357187,
+  "p_value": 2.2277086290744994e-42,
+  "kendalls_w": 0.5049883210714297,
+  "interpretation": "Exploratory weekday association, not proof of customer-demand seasonality. Serial dependence and ordering/closure schedules affect inference. Monthly plot is descriptive; less than two complete annual cycles in training cannot establish annual seasonality."
+}

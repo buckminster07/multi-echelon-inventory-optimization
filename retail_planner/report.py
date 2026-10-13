@@ -43,4 +43,9 @@ def build_report(output):
     page+='<section><h2>Cost–service tradeoffs</h2><img src="policy_comparison.png" alt="Cost and fill rates across policies and scenarios"><div class="scroll">'+body+'</div></section>'
     page+='<section><h2>Forecast benchmark</h2><img src="forecast_comparison.png" alt="Forecast WAPE by method"><p>Chronological model selection, calibration, tuning and test windows are separate. A machine-learning model is a challenger: the data decides whether it earns use.</p></section>'
     page+='<section><h2>Review the evidence</h2><p><a href="trials.csv">Individual trials</a> · <a href="paired_differences.csv">Paired differences</a> · <a href="pair_service.csv">Product-market service</a> · <a href="sensitivity.csv">Sensitivity</a> · <a href="manifest.json">Reproduction manifest</a></p><p>These are modeled decisions against historical sales, not verified company savings. See README and the business brief for assumptions and tradeoffs.</p></section></body></html>'
+    if (out/'eda/README.md').exists():
+        eda_section='<section><h2>Extended exploratory analysis</h2><p><a href="eda/README.md">Methods, findings and source tables</a>. Behavioral diagnostics use training dates only.</p>'
+        for name in ['missing_values','seasonality','price_changes','market_returns','cutoff_sensitivity']:
+            eda_section+=f'<img src="eda/{name}.png" alt="{name.replace("_"," ")}">'
+        page=page.replace('</body>',eda_section+'</section></body>')
     (out/'report.html').write_text(page,encoding='utf-8')

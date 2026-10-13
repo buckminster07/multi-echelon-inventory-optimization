@@ -1,0 +1,23 @@
+{
+  "train_end": "2011-04-30",
+  "source_sha256": "572e36277c2390fbfde10664750731e0a86f55e33470d91919085f0408e67bfb",
+  "eda_source_sha256": "ee2f6d93f4f493827bc0ac896037076aa06a551b1fc68c9dba8f976fe753d621",
+  "files_sha256": {
+    "cutoff_sensitivity.csv": "9bb96c305412dfd3abf5d9672a3f40ef73489c8f36c03768ba4e11e6aaceaa33",
+    "cutoff_sensitivity.png": "953c11902770e31098e950fd0695a90b01369ad33fc7e8d16bc725d547f9a0a7",
+    "market_returns.csv": "6d54b52ca7649e74788f929b8577eba5e168e0230bcf9dc56599f9fa8b4b828c",
+    "market_returns.png": "363c11cf3e4b8e20020c178a24b3917be2d2df92d2f473e8dca2596405944c32",
+    "missing_values.csv": "ee73813494ce59262a52c4d57c6c25b1310847a72532ce5bcf119293615ae9f2",
+    "missing_values.png": "cfe42d28ea616dd8faa0c0fa24819ca6b9bd90792915fed638bfd2da5a7376d3",
+    "monthly_prices.csv": "fd88e08377b7e386f21939997c344f2e6b7001d8e3084895c32528094d9ea0cf",
+    "monthly_profile.csv": "2df08ec89f934f9be0b25ba2c19287675c5547714556f9691879c2c0b83916c2",
+    "price_changes.png": "9d341908640378dcda51204893408066ab129063820b425f1a34e78f82beebcb",
+    "README.md": "997326647a1251bedbf1e727749b74ea4957a71d7e6bd9e7aebfd07efae883a0",
+    "seasonality.png": "64725de52f28439669cd5af428351f830ab54421cab2567d90747db59eb8f91a",
+    "seasonality_test.json": "b00dbcd3b8b62de40f162f5683baa728e86792ee55f438e6a4e91965267fab07",
+    "seasonal_daily.csv": "bf5f989707350aa180a69b7b9837d4e569db456bc2822bcd42bbd9663641f2ee",
+    "weekday_profile.csv": "7fad15dcbfa1f2b926e5fa47eb5a3d6d93f41bbf4178d901b447c5e233fbdd6f",
+    "monthly_prices.csv.gz": "3314fd0a4b6d93b27c0e9be3fa56d778b736871a0806b923aa53d288035df17c"
+  },
+  "snapshot_note": "monthly_prices.csv is published compressed; notebook exports uncompressed CSV."
+}

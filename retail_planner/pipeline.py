@@ -14,6 +14,9 @@ def run(c,output,cache='data/cache',progress=print):
     if (out/'planning.sqlite').exists():raise FileExistsError('Choose a new output directory to preserve its decisions.')
     progress('1/8 Download/cache and clean UCI transactions')
     archive=acquire(cache);transactions,audit=clean_transactions(archive,cache)
+    from .eda import run_eda
+    progress('Extended EDA: missingness, seasonality, prices, returns and cutoff sensitivity')
+    run_eda(archive,cache,out/'eda',c.train_end)
     data=prepare(transactions,c);del transactions
     progress(f"2/8 SQL integration: {len(data['skus'])} SKUs, {len(data['markets'])} markets, {data['active'].sum()} active pairs")
     db=sql_store(data,c,out/'planning.sqlite')
