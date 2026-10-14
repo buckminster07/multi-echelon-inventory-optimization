@@ -45,16 +45,8 @@ started=time.perf_counter()
 out=Path('outputs')/('colab-'+datetime.now(timezone.utc).strftime('%Y%m%d-%H%M%S'))
 out.mkdir(parents=True,exist_ok=False)
 display(pd.Series(c.dict()))''')
-md('''## 2. Acquire and audit real transactions
-
-Gross positive outbound sales form the demand proxy. Cancellations/returns are reported separately; they are not negative future demand. Exact repeated lines are retained because invoice-line identifiers are unavailable. Seven extreme bulk lines above 10,000 units were excluded in the published source audit. Inspect the current audit rather than assuming it is unchanged.
-
-**Learn:** distinguish a fixed cleaning rule from a model tuned to the test set. **Exercise:** explain what would change if returned units were refurbished and restocked.''')
-code('''from retail_planner.data import acquire,clean_transactions,prepare,sql_store
-archive=acquire('data/cache')
-transactions,audit=clean_transactions(archive,'data/cache')
-display(pd.Series(audit))
-display(transactions[['date','sku','quantity','price','market']].head())''')
+from eda_notebook_cells import append_eda_cells
+append_eda_cells(md,code)
 md('''## 3. Select the cohort and integrate through SQL
 
 Markets and products are ranked using only data through April 2011. The initial assortment is fixed before later evaluation. A zero-filled active pair means zero observed sales, not confirmed zero latent demand. SQLite keys separate products, locations and active pairs; the modeling array is reconstructed through SQL.
@@ -81,22 +73,6 @@ axes[1].hist(data['pairs'].query('active').zero_fraction,bins=15);axes[1].set(ti
 fig.tight_layout();plt.show()
 display(data['sku_master'].head(12));display(data['pairs'].query('active').sort_values('adi',ascending=False).head(10))
 del transactions''')
-md('''## 4B. Extended EDA: evidence before modeling
-
-The missing-value audit covers every original column and sheet. Customer IDs are inspected only for aggregate completeness and discarded. Behavioral diagnostics use the initial training window across eligible products and markets. They do not change the original cleaning rule or select models using later test outcomes.
-
-Charts cover weekly/monthly patterns, within-product-market prices, market returns and extreme-order thresholds. The Friedman weekday test and effect size are exploratory; serial dependence and closure schedules limit interpretation. Monthly patterns do not establish annual seasonality with fewer than two complete training years.
-
-**Learn:** a negative-quantity-to-gross-sales ratio is not a matched order-return probability; a transaction median price change is not causal price elasticity. Cutoff sensitivity here measures data changes, not inventory-policy performance.''')
-code('''from retail_planner.eda import run_eda
-eda_tables,seasonality_evidence=run_eda(archive,'data/cache',out/'eda',c.train_end)
-display(eda_tables['missing_values'])
-display(pd.Series(seasonality_evidence))
-display(eda_tables['market_returns'].head(12))
-display(eda_tables['cutoff_sensitivity'])
-for chart in ['missing_values','seasonality','price_changes','market_returns','cutoff_sensitivity']:
-    display(Image(filename=str(out/'eda'/(chart+'.png'))))
-print('Read the accompanying interpretation:',out/'eda/README.md')''')
 md('''## 5. Train and select forecasts
 
 Compare seasonal naive, a 28-day mean, TSB for intermittent demand, and a global Poisson gradient booster. The booster learns across product–market pairs using categorical IDs, calendar fields and lagged demand statistics. Its recursive forecast uses predictions as future lags. May backtests select a method separately for each pair.

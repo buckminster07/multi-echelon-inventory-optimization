@@ -54,7 +54,7 @@ These are simulated outcomes against real sales, not verified company savings. R
 
 ### Extended EDA with charts
 
-The CLI and Colab notebook include [executed EDA findings and five figures](examples/retail/eda/README.md):
+The Colab notebook starts with an original-data preview and column guide, then walks through EDA in sections 2.1–2.12. Each topic has its own calculation cell, table and chart before SQL integration and forecasting. The CLI and Colab notebook include [executed EDA findings and five figures](examples/retail/eda/README.md):
 
 - Full original-column missing-value counts by workbook sheet and overall, with a completeness chart.
 - A training-period daily trend, detrended weekday profile, Friedman weekday-effect test with effect size, and complete-month sales chart. Annual seasonality is not established by this short training history.

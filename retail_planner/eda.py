@@ -113,9 +113,6 @@ def price_changes(sales):
 
 
 def run_eda(archive, cache, output, train_end):
-    import matplotlib
-    matplotlib.use('Agg')
-    import matplotlib.pyplot as plt
     out = Path(output); out.mkdir(parents=True, exist_ok=True)
     raw, missing = load_raw(archive, cache)
     training = raw[raw.date <= train_end]
@@ -126,51 +123,82 @@ def run_eda(archive, cache, output, train_end):
     prices = price_changes(sales)
     tables = dict(missing_values=missing, market_returns=returns, cutoff_sensitivity=sensitivity,
                   seasonal_daily=daily, weekday_profile=weekly, monthly_profile=monthly, monthly_prices=prices)
-    for name, frame in tables.items(): frame.to_csv(out/(name+'.csv'), index=False)
-    (out/'seasonality_test.json').write_text(json.dumps(evidence, indent=2), encoding='utf-8')
+    export_eda(tables, evidence, archive, out, train_end)
+    return tables, evidence
+
+
+def plot_eda_section(section, tables, output):
+    """Render one already-computed EDA topic; usable independently in a notebook."""
+    import matplotlib.pyplot as plt
+    out = Path(output); out.mkdir(parents=True, exist_ok=True)
+    missing=tables.get('missing_values');daily=tables.get('seasonal_daily')
+    weekly=tables.get('weekday_profile');monthly=tables.get('monthly_profile')
+    prices=tables.get('monthly_prices');returns=tables.get('market_returns')
+    sensitivity=tables.get('cutoff_sensitivity')
     plt.rcParams.update({'font.size':10})
     def save(fig, name):
         fig.tight_layout(); fig.savefig(out/(name+'.png'), dpi=140); plt.close(fig)
-    fig, ax = plt.subplots(figsize=(9,4))
-    overall = missing[missing.sheet=='ALL'].sort_values('missing_pct')
-    ax.barh(overall.field, overall.missing_pct, color='#277f8e')
-    for i, value in enumerate(overall.missing_pct): ax.text(value+.15, i, f'{value:.2f}%', va='center')
-    ax.set(xlabel='Missing or blank (%)', title='Original workbook: completeness before cleaning', xlim=(0,max(5,overall.missing_pct.max()*1.25)))
-    save(fig,'missing_values')
-    fig, axes = plt.subplots(3,1,figsize=(11,10))
-    axes[0].plot(daily.date,daily.units,alpha=.4,label='Daily sales')
-    axes[0].plot(daily.date,daily.trend_28d,color='#a84931',label='28-day centered mean')
-    axes[0].set(title='Training data: trend and spikes',ylabel='Units');axes[0].legend()
-    axes[1].bar(['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],weekly.mean_relative_units,color='#277f8e')
-    axes[1].axhline(1,color='gray',linestyle='--');axes[1].set(ylabel='Sales / local trend',title='Weekday profile after detrending (descriptive)')
-    full = monthly[monthly.complete_month]
-    axes[2].bar(full.month,full.mean_daily_units,color='#277f8e');axes[2].tick_params(axis='x',rotation=60)
-    axes[2].set(ylabel='Mean units per day',title='Complete calendar months; annual seasonality not established')
-    save(fig,'seasonality')
-    fig, axes = plt.subplots(1,2,figsize=(12,4.5))
-    changes = prices.change_pct.dropna()
-    axes[0].hist(changes.clip(-100,100),bins=40,color='#277f8e')
-    axes[0].set(xlabel='Consecutive-month median price change (%)',ylabel='Product–market comparisons',title='Display clipped to ±100%; CSV retains full values')
-    candidates = prices.groupby(['market','sku']).size().sort_values(ascending=False).head(4).index
-    for market, sku in candidates:
-        group = prices[(prices.market==market)&(prices.sku==sku)]
-        axes[1].plot(pd.to_datetime(group.month),100*group.median_price/group.median_price.iloc[0],label=f'{market}: {sku}')
-    axes[1].set(title='Four pairs with most qualifying months',ylabel='Price index (first qualifying month = 100)');axes[1].legend(fontsize=7);axes[1].tick_params(axis='x',rotation=35)
-    save(fig,'price_changes')
-    fig, axes = plt.subplots(1,2,figsize=(12,5))
-    top = returns.head(12).sort_values('gross_units')
-    axes[0].barh(top.market,top.returned_to_gross_unit_pct,color='#a84931')
-    axes[0].set(xlabel='Negative-quantity units / gross outbound units (%)',title='Twelve largest training sales markets')
-    axes[1].scatter(returns.gross_units,returns.returned_to_gross_unit_pct,color='#277f8e',alpha=.7)
-    axes[1].set_xscale('log');axes[1].set(xlabel='Gross outbound units (log scale)',ylabel='Returned-to-gross units (%)',title='Small denominators can inflate ratios')
-    save(fig,'market_returns')
-    fig, axes = plt.subplots(1,2,figsize=(11,4))
-    axes[0].plot(sensitivity.cutoff,sensitivity.unit_retention_pct,'o-',label='Units')
-    axes[0].plot(sensitivity.cutoff,sensitivity.revenue_retention_pct,'s-',label='Revenue');axes[0].legend()
-    axes[0].set(ylabel='Retained relative to no cutoff (%)',xlabel='Maximum units per invoice line',title='Cleaning-rule sensitivity: training data')
-    axes[1].bar(sensitivity.cutoff,sensitivity.max_daily_units,color='#277f8e')
-    axes[1].set(ylabel='Maximum total daily units',xlabel='Maximum units per invoice line',title='Impact on observed demand spikes')
-    save(fig,'cutoff_sensitivity')
+    if section == 'missing_values':
+        fig, ax = plt.subplots(figsize=(9,4))
+        overall = missing[missing.sheet=='ALL'].sort_values('missing_pct')
+        ax.barh(overall.field, overall.missing_pct, color='#277f8e')
+        for i, value in enumerate(overall.missing_pct): ax.text(value+.15, i, f'{value:.2f}%', va='center')
+        ax.set(xlabel='Missing or blank (%)', title='Original workbook: completeness before cleaning', xlim=(0,max(5,overall.missing_pct.max()*1.25)))
+        save(fig,'missing_values')
+        return out / (section+'.png')
+    if section == 'seasonality':
+        fig, axes = plt.subplots(3,1,figsize=(11,10))
+        axes[0].plot(daily.date,daily.units,alpha=.4,label='Daily sales')
+        axes[0].plot(daily.date,daily.trend_28d,color='#a84931',label='28-day centered mean')
+        axes[0].set(title='Training data: trend and spikes',ylabel='Units');axes[0].legend()
+        axes[1].bar(['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],weekly.mean_relative_units,color='#277f8e')
+        axes[1].axhline(1,color='gray',linestyle='--');axes[1].set(ylabel='Sales / local trend',title='Weekday profile after detrending (descriptive)')
+        full = monthly[monthly.complete_month]
+        axes[2].bar(full.month,full.mean_daily_units,color='#277f8e');axes[2].tick_params(axis='x',rotation=60)
+        axes[2].set(ylabel='Mean units per day',title='Complete calendar months; annual seasonality not established')
+        save(fig,'seasonality')
+        return out / (section+'.png')
+    if section == 'price_changes':
+        fig, axes = plt.subplots(1,2,figsize=(12,4.5))
+        changes = prices.change_pct.dropna()
+        axes[0].hist(changes.clip(-100,100),bins=40,color='#277f8e')
+        axes[0].set(xlabel='Consecutive-month median price change (%)',ylabel='Product–market comparisons',title='Display clipped to ±100%; CSV retains full values')
+        candidates = prices.groupby(['market','sku']).size().sort_values(ascending=False).head(4).index
+        for market, sku in candidates:
+            group = prices[(prices.market==market)&(prices.sku==sku)]
+            axes[1].plot(pd.to_datetime(group.month),100*group.median_price/group.median_price.iloc[0],label=f'{market}: {sku}')
+        axes[1].set(title='Four pairs with most qualifying months',ylabel='Price index (first qualifying month = 100)');axes[1].legend(fontsize=7);axes[1].tick_params(axis='x',rotation=35)
+        save(fig,'price_changes')
+        return out / (section+'.png')
+    if section == 'market_returns':
+        fig, axes = plt.subplots(1,2,figsize=(12,5))
+        top = returns.head(12).sort_values('gross_units')
+        axes[0].barh(top.market,top.returned_to_gross_unit_pct,color='#a84931')
+        axes[0].set(xlabel='Negative-quantity units / gross outbound units (%)',title='Twelve largest training sales markets')
+        axes[1].scatter(returns.gross_units,returns.returned_to_gross_unit_pct,color='#277f8e',alpha=.7)
+        axes[1].set_xscale('log');axes[1].set(xlabel='Gross outbound units (log scale)',ylabel='Returned-to-gross units (%)',title='Small denominators can inflate ratios')
+        save(fig,'market_returns')
+        return out / (section+'.png')
+    if section == 'cutoff_sensitivity':
+        fig, axes = plt.subplots(1,2,figsize=(11,4))
+        axes[0].plot(sensitivity.cutoff,sensitivity.unit_retention_pct,'o-',label='Units')
+        axes[0].plot(sensitivity.cutoff,sensitivity.revenue_retention_pct,'s-',label='Revenue');axes[0].legend()
+        axes[0].set(ylabel='Retained relative to no cutoff (%)',xlabel='Maximum units per invoice line',title='Cleaning-rule sensitivity: training data')
+        axes[1].bar(sensitivity.cutoff,sensitivity.max_daily_units,color='#277f8e')
+        axes[1].set(ylabel='Maximum total daily units',xlabel='Maximum units per invoice line',title='Impact on observed demand spikes')
+        save(fig,'cutoff_sensitivity')
+        return out / (section+'.png')
+    raise ValueError('Unknown EDA section: '+section)
+
+
+def export_eda(tables, evidence, archive, output, train_end):
+    """Export previously computed tables, plots and interpretation without rereading data."""
+    out=Path(output);out.mkdir(parents=True,exist_ok=True)
+    prices=tables['monthly_prices'];changes=prices.change_pct.dropna()
+    for name, frame in tables.items(): frame.to_csv(out/(name+'.csv'), index=False)
+    (out/'seasonality_test.json').write_text(json.dumps(evidence, indent=2), encoding='utf-8')
+    for section in ['missing_values','seasonality','price_changes','market_returns','cutoff_sensitivity']:
+        plot_eda_section(section,tables,out)
     report = f'''# Extended exploratory data analysis
 
 Missingness covers both original workbook sheets, before cleaning. Customer identifiers are inspected transiently for completeness and immediately discarded; no IDs are exported. All behavioral analyses use only data through {train_end}, across all eligible products and markets, not only the 150-product benchmark cohort. They do not tune or change the published replenishment benchmark.
